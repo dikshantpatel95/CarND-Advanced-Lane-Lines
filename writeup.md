@@ -82,8 +82,10 @@ I verified that my perspective transform was working as expected by drawing the 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 Histogram evalution gives info about the position of lane markers in the warped image. I then used sliding window based search and then i used polyfit to fit a second orfer poynomial.This idea was from a previous graduate of the course to search aroung the lines for fixed pixels since consecutive frames are likely to have lanes in similar positions. Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
-<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/thresholded_undistorted.jpg" width="450" title="Original Image">
-<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/thresholded_undistorted.jpg" width="450" title="Original Image">
+
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/sliding_window_Search.JPG" width="450" title="Original Image">
+
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/search_around_prev_line.JPG" width="450" title="Original Image">
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
  I calculate the left lane curvature and right lane curvature by generating polynomial using polyfit and applying the curvature formula. Then i average out the curvature to get the curvature. Below is the code.
