@@ -27,74 +27,109 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 <img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/undistorted_imgs/calibration3.jpg" width="450" title="Undistorted image">
 
 ### Pipeline (single images)
-<img src="" width="450" title="Original Image">
 #### 1. Provide an example of a distortion-corrected image.
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
 
-<img src="" width="450" title="Original Image">
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/test_images/straight_lines1.jpg" width="450" title="Original Image">
 
-<img src="" width="450" title="Original Image">
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/straight_lines1_undistorted.jpg" width="450" title="Original Image">
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+We will first use colour thresholding and we will achieve this in 3 step process since we not only need to worry about seperating line but also about varying light conditions which will make it harder. The 3 steps are-
 
+Step1- Apply gradient threshold in X direction
+
+Step2- Apply directional gradient since most lanelines are close to vertical (threshold are 30 and 120)
+
+Step3- We apply a RGB threshold since yellow lines can be seperated
+
+Step4- HLS Threshold to remove shadows which effects edge detection and helps seperate yellow and white lines easily
+
+Step5- We combine all the above thresholds to get a clean binary image for the lane lines
+
+Finally we apply the undistortion to the image and get the undistorted thresholded image we can start working on!! Look at the output below as an example of the process
+
+
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/test_images/straight_lines1.jpg" width="450" title="Original Image">
+
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/thresholded_undistorted.jpg" width="450" title="Original Image">
 
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform is in the 7th code cell of the IPython notebook. Now we will start with the perspective transform which can now get us the lane markes to compute lane curvature. To start we define a region of interest which we will take the transformation on and since mostly the lanes appear in the specific region of image we can hardcode the ROI polygon.
 
-```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
-```
+We will compute the transformation and its inverse now. The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 565, 470      | 320, 1        | 
+| 200, 720      | 320, 720      |
+| 1140, 720     | 920, 720      |
+| 735, 470      | 920, 1        |
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/perspective_transform_polygon.jpg" width="450" title="Original Image">
+
+
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/perspective_transform.jpg" width="450" title="Original Image">
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+Histogram evalution gives info about the position of lane markers in the warped image. I then used sliding window based search and then i used polyfit to fit a second orfer poynomial.This idea was from a previous graduate of the course to search aroung the lines for fixed pixels since consecutive frames are likely to have lanes in similar positions. Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
-
-![alt text][image5]
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/thresholded_undistorted.jpg" width="450" title="Original Image">
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/thresholded_undistorted.jpg" width="450" title="Original Image">
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+ I calculate the left lane curvature and right lane curvature by generating polynomial using polyfit and applying the curvature formula. Then i average out the curvature to get the curvature. Below is the code.
+```python
+def measure_radius_of_curvature(x_values):
+    ym_per_pix = 3/100 # meters per pixel in y dimension
+    xm_per_pix = 3.7/660 # meters per pixel in x dimension
+    # If no pixels were found return None
+    y_points = np.linspace(0, num_rows-1, num_rows)
+    y_eval = np.max(y_points)
 
-I did this in lines # through # in my code in `my_other_file.py`
+    # Fit new polynomials to x,y in world space
+    fit_cr = np.polyfit(y_points*ym_per_pix, x_values*xm_per_pix, 2)
+    curverad = ((1 + (2*fit_cr[0]*y_eval*ym_per_pix + fit_cr[1])**2)**1.5) / np.absolute(2*fit_cr[0])
+    return curverad
+```
+
+```python
+left_curve_rad = measure_radius_of_curvature(left_x_predictions)
+right_curve_rad = measure_radius_of_curvature(right_x_predictions)
+average_curve_rad = (left_curve_rad + right_curve_rad)/2
+```
+
+```python
+# compute the offset from the center
+lane_center = (right_x_predictions[719] + left_x_predictions[719])/2
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
+center_offset_pixels = abs(img_size[0]/2 - lane_center)
+center_offset_mtrs = xm_per_pix*center_offset_pixels
+offset_string = "Center offset: %.2f m" % center_offset_mtrs
+print(offset_string)
+```
+
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
 I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+<img src="https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/output_images/straight_lines1.jpg" width="450" title="Original Image">
 
----
 
 ### Pipeline (video)
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](https://github.com/dikshantpatel95/CarND-Advanced-Lane-Lines/blob/master/project_video_output.mp4)
 
 ---
 
